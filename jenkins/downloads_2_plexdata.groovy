@@ -32,8 +32,7 @@ pipeline {
                         }
                         dest_location = '/plexdata/' + location.minus('/downloads/completed/')
                         for (c in completed) {
-                            sane_file_name = sanitize_file_name(c, location)
-                            mover(sane_file_name, location, dest_location)
+                            mover(c, location, dest_location)
                         }
                     }
                 }
@@ -64,12 +63,5 @@ def seeding() {
 }
 
 def mover(file, src_location, dest_location) {
-    sh(script: "mv -fvn ${src_location}/${file} ${dest_location}", returnStdout: true)
-}
-
-def sanitize_file_name(file, location) {
-    sane_file_name = file.replaceAll(" ", ".")
-    echo "SANE FILE NAME: " + sane_file_name
-    sh(script: "mv -fvn ${location}/${file} ${location}/${sane_file_name}", returnStdout: true)
-    return sane_file_name
+    sh(script: """mv -fvn \"${src_location}/${file}\" ${dest_location}/""", returnStdout: true)
 }
