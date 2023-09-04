@@ -7,7 +7,7 @@ pipeline {
             steps {
                 script {
                     deleteDir()
-
+                    def qbittorent_host = "192.168.1.151:8080"
                     def src_tv = "/downloads/completed/tv"
                     def src_4k = "/downloads/completed/4K"
                     def src_movies = "/downloads/completed/movies"
@@ -48,7 +48,7 @@ pipeline {
 
 def torrent_auth() {
     withCredentials([string(credentialsId: 'qbittorrent_admin_password', variable: 'qbittorrent_admin_password')]) {
-        sh(script: "curl -isS -c $WORKSPACE/cookie.txt -H \"Referer: http://192.168.1.178:8080\" -d \"username=nathan&password=${qbittorrent_admin_password}\" http://192.168.1.178:8080/api/v2/auth/login", returnStdout: true)
+        sh(script: "curl -isS -c $WORKSPACE/cookie.txt -H \"Referer: http://${qbittorent_host}\" -d \"username=nathan&password=${qbittorrent_admin_password}\" http://${qbittorent_host}/api/v2/auth/login", returnStdout: true)
     }
 }
 
@@ -62,7 +62,7 @@ def each_line(files, location) {
 }
 
 def seeding() {
-    r = sh(script: "curl -Ss -b $WORKSPACE/cookie.txt -H 'Accept: application/json' -H 'Content-Type: application/json' http://192.168.1.178:8080/api/v2/torrents/info?filter=seeding > $WORKSPACE/seeding.json")
+    r = sh(script: "curl -Ss -b $WORKSPACE/cookie.txt -H 'Accept: application/json' -H 'Content-Type: application/json' http://${qbittorent_host}/api/v2/torrents/info?filter=seeding > $WORKSPACE/seeding.json")
     seed_map = readJSON file: "$WORKSPACE/seeding.json"
     return seed_map
 }
