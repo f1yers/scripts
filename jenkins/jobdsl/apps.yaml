@@ -1,0 +1,6 @@
+jobs:
+- name: example-app
+  repository: example-app-repo
+  basePath: Apps
+  envs: [dev, qa, preprod, production]
+  scriptPath: Jenkinsfile
