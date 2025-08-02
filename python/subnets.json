@@ -1,0 +1,44 @@
+{
+    "vpc-1": {
+        "preprod": {
+            "app": {
+                "us-east-1a": "subnet-id",
+                "us-east-1c": "subnet-id",
+                "us-east-1e": "subnet-id"
+            }
+        },
+        "production": {
+            "app": {
+                "us-east-1a": "subnet-id",
+                "us-east-1c": "subnet-id",
+                "us-east-1e": "subnet-id"
+            }
+        }
+    },
+    "vpc-2": {
+        "preprod": {
+            "app": {
+                "us-east-1a": "subnet-id",
+                "us-east-1c": "subnet-id",
+                "us-east-1e": "subnet-id"
+            },
+            "public": {
+                "us-east-1a": "subnet-id",
+                "us-east-1c": "subnet-id",
+                "us-east-1e": "subnet-id"
+            }
+        },
+        "production": {
+            "app": {
+                "us-east-1a": "subnet-id",
+                "us-east-1c": "subnet-id",
+                "us-east-1e": "subnet-id"
+            },
+            "public": {
+                "us-east-1a": "subnet-id",
+                "us-east-1c": "subnet-id",
+                "us-east-1e": "subnet-id"
+            }
+        }
+    }
+}

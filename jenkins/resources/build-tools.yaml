@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: Pod
+spec:
+  tolerations:
+  - key: "jenkins-agent-large-nodes"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+  nodeSelector:
+    jenkins-agent-large-nodes: "true"
+  initContainers:
+  - name: copy-known-hosts
+    image: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/busybox:latest
+    command: ['sh', '-c', 'cp /root/.ssh/known_hosts /home/jenkins/agent/known_hosts && chmod 644 /home/jenkins/agent/known_hosts']
+    volumeMounts:
+    - name: ssh-config
+      mountPath: /root/.ssh
+    - name: workspace-volume
+      mountPath: /home/jenkins/agent
+  containers:
+  - name: build-tools
+    image: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/build-tools:01212025
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "512M"
+        cpu: "1000m"
+      limits:
+        memory: "1024M"
+        cpu: "2000m"
+    env:
+    - name: AWS_DEFAULT_REGION
+      value: "us-east-1"
+    - name: AWS_DEFAULT_OUTPUT
+      value: "json"
+    volumeMounts:
+    - name: ssh-config
+      mountPath: /root/.ssh
+    - name: kube-config
+      mountPath: /root/.kube
+  - name: kaniko
+    workingDir: /tmp/jenkins
+    image: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/kaniko:v1.23.2-debug
+    command:
+    - /busybox/cat
+    tty: true
+    resources:
+      requests:
+        memory: "8000M"
+        cpu: "2000m"
+      limits:
+        memory: "8000M"
+        cpu: "4000m"
+    env:
+    - name: AWS_DEFAULT_REGION
+      value: "us-east-1"
+    - name: AWS_DEFAULT_OUTPUT
+      value: "json"
+    volumeMounts:
+    - name: docker-config
+      mountPath: /kaniko/.docker
+    - name: npmrc
+      mountPath: /usr/src/app/.npmrc
+      subPath: .npmrc
+    - name: maven-settings-xml
+      mountPath: /kaniko/settings.xml
+      subPath: settings.xml
+  - name: java-17
+    image: 596212449348.dkr.ecr.us-east-1.amazonaws.com/maven:3.8-openjdk-17-slim
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "512M"
+        cpu: "250m"
+      limits:
+        memory: "2048M"
+        cpu: "1000m"
+    volumeMounts:
+    - name: maven-settings-xml
+      mountPath: /usr/share/maven/conf/settings.xml
+      subPath: settings.xml
+  - name: java-11
+    image: 596212449348.dkr.ecr.us-east-1.amazonaws.com/maven:3-openjdk-11
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "512M"
+        cpu: "250m"
+      limits:
+        memory: "2048M"
+        cpu: "1000m"
+    volumeMounts:
+    - name: maven-settings-xml
+      mountPath: /usr/share/maven/conf/settings.xml
+      subPath: settings.xml
+  - name: nodejs-18
+    image: 596212449348.dkr.ecr.us-east-1.amazonaws.com/nodejs:18.2.0
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "512M"
+        cpu: "250m"
+      limits:
+        memory: "2048M"
+        cpu: "1000m"
+    volumeMounts:
+    - name: npmrc
+      mountPath: /root/.npmrc
+      subPath: .npmrc
+  volumes:
+  - name: docker-config
+    configMap:
+      name: docker-config
+      items:
+      - key: dockerconfig.json
+        path: config.json
+  - name: ssh-config
+    secret:
+      secretName: jenkins-configs
+      defaultMode: 0400
+  - name: kube-config
+    secret:
+      secretName: jenkins-kube-config
+      defaultMode: 384
+  - name: "maven-settings-xml"
+    configMap:
+      name: "maven-settings-xml-codeartifact"
+      items:
+      - key: settings.xml
+        path: settings.xml
+  - name: npmrc
+    configMap:
+      name: npmrc-codeartifact
+      items:
+      - key: .npmrc
+        path: .npmrc

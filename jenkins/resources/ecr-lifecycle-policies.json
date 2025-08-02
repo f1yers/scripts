@@ -1,0 +1,18 @@
+{
+    "rules": [
+        {
+            "rulePriority": 1,
+            "description": "Cleanup dev/qa images after 2 weeks",
+            "selection": {
+                "tagStatus": "tagged",
+                "tagPrefixList": ["dev","qa"],
+                "countType": "sinceImagePushed",
+                "countNumber": 14,
+                "countUnit": "days"
+            },
+            "action": {
+                "type": "expire"
+            }
+        }
+    ]
+}
