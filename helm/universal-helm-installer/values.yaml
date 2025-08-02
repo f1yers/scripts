@@ -1,0 +1,81 @@
+namespace: api
+serviceAccountName: default
+runtime: java
+environment: ""
+
+ingressAnnotations:
+  nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  nginx.ingress.kubernetes.io/x-forwarded-prefix: "true"
+  nginx.ingress.kubernetes.io/rewrite-target: /
+
+replicaCount: 2
+
+image:
+  # Dynamically configured via CI/CD
+  fullPath: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/some-container:0.0.0
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    memory: "1024M"
+    cpu: "100m"
+  limits:
+    memory: "2048M"
+    cpu: "1000m"
+
+readinessProbe:
+  failureThreshold: 45
+  initialDelaySeconds: 100
+  periodSeconds: 20
+  successThreshold: 1
+  timeoutSeconds: 30
+
+livenessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 1000
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 30
+
+service:
+  enabled: true
+  type: ClusterIP
+  protocol: TCP
+  port: 80
+  targetName: http
+  targetPort: 8080
+
+podLabels: {}
+podAnnotations: {}
+
+ingressRules: {}
+ingressClassName: nginx # default to internal controller
+
+pvc: {}
+
+cronjobs: {}
+
+jobs: {}
+
+volumeMounts: {}
+volumes: {}
+
+tolerations: {}
+
+scaledobject:
+  enabled: false # re-enable if greater cost-savings is desired
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  # NewRelic log event trigger
+  # nrql: "SELECT COUNT(*) FROM Log WHERE cluster_name = '{{ .env }}-us-east-1-eks' AND container_name = 'controller' AND message LIKE '%{{ .ingressHost }}%' AND message LIKE '%{{ regexReplaceAll \"^([^(]*)(.*)\" .ingressPath \"$1\" }}%' SINCE 1 hour ago"
+  # Prometheus triger
+  prometheus:
+    serverAddress: http://prometheus-server.prometheus.svc.cluster.local
+    metricName: nginx_ingress_controller_requests
+    threshold: '1'
+    # Total Requests in the Last Hour
+    query: "sum(increase(nginx_ingress_controller_requests{service='{{ .service }}'}[1h]))"
+  # Cron to scale Preprod M-F 9AM-5PM
+  cron:
+    enabled: true
+    desiredReplicas: 1

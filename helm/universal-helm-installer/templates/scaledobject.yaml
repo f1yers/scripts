@@ -1,0 +1,60 @@
+{{- if and (hasKey .Values "scaledobject") (eq (get .Values.scaledobject "enabled") true) (ne .Values.environment "production") (ne .Values.environment "demo") }}
+
+  {{- $env := .Values.environment }}
+  {{- if eq .Values.environment "qa" }}
+    {{- $env = "preprod" }}
+  {{- end }}
+
+  {{- $ingressHost := "defaultHost" }}
+  {{- $ingressPath := "defaultPath" }}
+
+  {{- if (not (empty $.Values.ingressRules)) }}
+    {{- with index $.Values.ingressRules 0 }}
+      {{- $ingressHost = .host }}
+      {{- $ingressPath = index .http.paths 0 "path" }}
+    {{- end }}
+  {{- end }}
+
+  {{- $context := dict "env" $env "ingressHost" $ingressHost "ingressPath" $ingressPath "service" $.Release.Name }}
+
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ $.Release.Name }}-scaledobject
+  namespace: {{ $.Values.namespace }}
+spec:
+  minReplicaCount: {{ $.Values.scaledobject.minReplicaCount }}
+  maxReplicaCount: {{ $.Values.scaledobject.maxReplicaCount }}
+  scaleTargetRef:
+    name: {{ $.Release.Name }}
+  triggers:
+    # DEFAULT SCALING TRIGGERS
+    {{- if $.Values.scaledobject.prometheus }}
+    - type: prometheus
+      metadata:
+        serverAddress: {{ $.Values.scaledobject.prometheus.serverAddress | quote }}
+        metricName: {{ $.Values.scaledobject.prometheus.metricName | quote }} 
+        threshold: {{ $.Values.scaledobject.prometheus.threshold | quote }}
+        query: {{ tpl $.Values.scaledobject.prometheus.query $context | quote }}
+    {{- end }}
+
+    {{- range $trigger := $.Values.scaledobject.triggers }}
+    - type: {{ $trigger.type }}
+      metadata:
+        {{- tpl ($trigger.metadata | toYaml) $context | nindent 8 }}
+      {{- if $trigger.authenticationRef }}
+      authenticationRef:
+        kind: {{ $trigger.authenticationRef.kind }}
+        name: {{ $trigger.authenticationRef.name }}
+      {{- end }}
+    {{- end }}
+
+    {{- if and (eq .Values.environment "preprod") (.Values.scaledobject.cron.enabled) }}
+    - type: cron
+      metadata:
+        timezone: America/New_York
+        start: 0 9 * * *        # At 9:00 AM
+        end: 0 17 * * *         # At 5:00 PM
+        desiredReplicas: {{ $.Values.scaledobject.cron.desiredReplicas | quote }}
+    {{- end }}
+{{ end }}

@@ -1,0 +1,42 @@
+{{- range .Values.pvc }}
+
+{{- if .volumeId }}
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: {{ .name }}-pv
+  labels:
+    failure-domain.beta.kubernetes.io/region: {{ .region }}
+    failure-domain.beta.kubernetes.io/zone: {{ .zone }}
+spec:
+  storageClassName: {{ .sc }}
+  capacity:
+    storage: {{ .size }}
+  accessModes:
+    - {{ .accessModes | default "ReadWriteOnce" }}
+  persistentVolumeReclaimPolicy: {{ .persistentVolumeReclaimPolicy | default "Retain" }}
+  awsElasticBlockStore: 
+    fsType: {{ .fsType | default "ext4" }}
+    volumeID: {{ .volumeId }}
+
+{{- end }}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .name }}-pvc
+  namespace: {{ .namespace }}
+  labels:
+    failure-domain.beta.kubernetes.io/region: {{ .region }}
+    failure-domain.beta.kubernetes.io/zone: {{ .zone }}
+spec:
+  storageClassName: {{ .sc }}
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .size }}
+
+{{- end }}

@@ -1,0 +1,41 @@
+{{- range $jobname, $job := .Values.jobs }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $.Release.Name }}-{{ $jobname }}
+  namespace: {{ $.Values.namespace }}
+  {{- if $job.annotations }}
+  annotations: {{ toYaml $job.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  template:
+    metadata:
+       name: {{ $.Release.Name }}
+       labels:
+        helm.sh/chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
+    spec:
+      containers:
+      - name: {{ $.Release.Name }}
+        image: {{ $.Values.image.fullPath }}
+        imagePullPolicy: {{ $job.imagePullPolicy | default "IfNotPresent" }}
+      {{- with $job.command }}
+        command:
+      {{ toYaml . | indent 10 }}
+      {{- end }}
+      {{- with $job.args }}
+        args:
+      {{ toYaml . | indent 10 }}
+      {{- end }}
+      {{- if $job.env }}
+        env: {{ toYaml $job.env | nindent 10 }}
+      {{- else }}
+        env: {{ toYaml $.Values.env | nindent 10 }}
+      {{- end }}
+      {{- if $job.envFrom }}
+        envFrom: {{ toYaml $job.envFrom | nindent 10 }}
+      {{- else }}
+        envFrom: {{ toYaml $.Values.envFrom | nindent 10 }}
+      {{- end }}
+      restartPolicy: {{ $job.restartPolicy | default "Never" }}
+{{- end }}

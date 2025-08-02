@@ -1,0 +1,34 @@
+{{- range $jobname, $job := .Values.cronjobs }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $.Release.Name }}-{{ $jobname }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  concurrencyPolicy: {{ $job.concurrencyPolicy | default "Allow" }}
+  schedule: {{ $job.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: {{ $.Release.Name }}
+            image: {{ $.Values.image.fullPath }}
+            imagePullPolicy: {{ $job.imagePullPolicy | default "IfNotPresent" }}
+          {{- with $job.command }}
+            command:
+          {{ toYaml . | indent 14 }}
+          {{- end }}
+          {{- with $job.args }}
+            args:
+          {{ toYaml . | indent 14 }}
+          {{- end }}
+          {{- if $.Values.env }}
+            env: {{ toYaml $.Values.env | nindent 14 }}
+          {{- end }}
+          {{- if $.Values.envFrom }}
+            envFrom: {{ toYaml $.Values.envFrom | nindent 14 }}
+          {{- end }}
+          restartPolicy: {{ $job.restartPolicy | default "OnFailure" }}
+{{- end }}

@@ -1,0 +1,19 @@
+{{ if .Values.ingressRules }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Release.Name }}
+    env: {{ .Values.environment }}
+{{ with .Values.ingressAnnotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{ end }}
+spec:
+  ingressClassName: {{ .Values.ingressClassName }}
+  rules:
+  {{ toYaml .Values.ingressRules | nindent 4 }}
+{{ end }}

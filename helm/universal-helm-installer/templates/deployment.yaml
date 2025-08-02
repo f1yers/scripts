@@ -1,0 +1,108 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+      env: {{ .Values.environment }}
+  strategy:
+{{ toYaml .Values.updateStrategy | indent 4 }}
+  template:
+    metadata:
+      annotations:
+        {{-  range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value }}
+        {{- end }}
+      labels:
+        app: {{ .Release.Name }}
+        env: {{ .Values.environment }}
+        {{-  range $key, $value := .Values.podLabels }}
+        {{ $key }}: {{ $value }}
+        {{- end }}
+    spec:
+    {{- if .Values.securityContext }}
+      securityContext: {{ toYaml .Values.securityContext | nindent 8 }}
+    {{- end }}
+    {{- if .Values.affinity }}
+      affinity:
+      {{ toYaml .Values.affinity | nindent 8 }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      tolerations:
+        {{ toYaml .Values.tolerations | nindent 8 }}
+    {{- end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{ toYaml .Values.nodeSelector | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      containers:
+        - name: {{ .Release.Name }}
+          image: {{ .Values.image.fullPath }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+      {{- if .Values.workingDir }}
+          workingDir: {{ .Values.workingDir }}
+      {{- end }}
+      {{- if .Values.command }}
+          command:
+      {{- range .Values.command }}
+            - {{ . | quote }}
+      {{- end }}
+      {{- else if eq .Values.runtime "java" }}
+          command: {{ include "command.java" . }}
+      {{- end }}
+      {{- if .Values.args }}
+          args:
+      {{- range .Values.args }}
+            - {{ . | quote }}
+      {{- end }}
+      {{- end }}
+          ports:
+          - name: {{ .Values.service.targetName }}
+            containerPort: {{ .Values.service.targetPort }}
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Release.Name }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://observe-agent-forwarder.observe.svc.cluster.local:4318
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: deployment.environment={{ .Values.environment }}
+            {{-  range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+      {{- if .Values.envFrom }}
+          envFrom: {{ toYaml .Values.envFrom | nindent 12 }}
+      {{- end }}
+      {{- if .Values.resources }}
+          resources: {{ toYaml .Values.resources | nindent 12 }}
+      {{- end }}
+      {{- if .Values.readinessProbe }}
+          readinessProbe: {{ toYaml .Values.readinessProbe | nindent 12 }}
+      {{- end }}
+      {{- if .Values.livenessProbe }}
+          livenessProbe: {{ toYaml .Values.livenessProbe | nindent 12 }}
+      {{- end }}
+          volumeMounts:
+      {{- if eq .Values.runtime "java" }}
+            - name: telemetry
+              mountPath: /var/telemetry
+              readOnly: true
+      {{- end }}
+      {{- if .Values.volumeMounts }}
+          {{ toYaml .Values.volumeMounts | nindent 12 }}
+      {{- end }}
+      volumes:
+        {{- if eq .Values.runtime "java" }}
+        - name: telemetry
+          hostPath:
+            path: /var/telemetry
+            type: Directory
+        {{- end }}
+        {{- if .Values.volumes }}
+        {{ toYaml .Values.volumes | nindent 8 }}
+        {{- end }}
